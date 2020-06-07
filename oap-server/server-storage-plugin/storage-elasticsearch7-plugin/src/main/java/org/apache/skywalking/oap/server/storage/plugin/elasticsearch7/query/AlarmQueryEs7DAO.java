@@ -20,9 +20,9 @@ package org.apache.skywalking.oap.server.storage.plugin.elasticsearch7.query;
 
 import com.google.common.base.Strings;
 import org.apache.skywalking.oap.server.core.alarm.AlarmRecord;
-import org.apache.skywalking.oap.server.core.query.entity.AlarmMessage;
-import org.apache.skywalking.oap.server.core.query.entity.Alarms;
-import org.apache.skywalking.oap.server.core.query.entity.Scope;
+import org.apache.skywalking.oap.server.core.query.type.AlarmMessage;
+import org.apache.skywalking.oap.server.core.query.type.Alarms;
+import org.apache.skywalking.oap.server.core.query.enumeration.Scope;
 import org.apache.skywalking.oap.server.core.storage.query.IAlarmQueryDAO;
 import org.apache.skywalking.oap.server.library.client.elasticsearch.ElasticSearchClient;
 import org.apache.skywalking.oap.server.storage.plugin.elasticsearch.base.EsDAO;
@@ -37,22 +37,14 @@ import org.elasticsearch.search.sort.SortOrder;
 import java.io.IOException;
 import java.util.Objects;
 
-/**
- * @author peng-yongsheng
- * @author kezhenxu94
- */
 public class AlarmQueryEs7DAO extends EsDAO implements IAlarmQueryDAO {
 
     public AlarmQueryEs7DAO(ElasticSearchClient client) {
         super(client);
     }
 
-    public Alarms getAlarm(final Integer scopeId,
-                           final String keyword,
-                           final int limit,
-                           final int from,
-                           final long startTB,
-                           final long endTB) throws IOException {
+    public Alarms getAlarm(final Integer scopeId, final String keyword, final int limit, final int from,
+        final long startTB, final long endTB) throws IOException {
         SearchSourceBuilder sourceBuilder = SearchSourceBuilder.searchSource();
 
         BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();

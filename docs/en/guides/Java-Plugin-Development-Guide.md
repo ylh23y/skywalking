@@ -103,15 +103,6 @@ Create ExitSpan by operation name(e.g. service name, uri) and new **ContextCarri
      */
     AbstractSpan setComponent(Component component);
 
-    /**
-     * Only use this method in explicit instrumentation, like opentracing-skywalking-bridge.
-     * It it higher recommend don't use this for performance consideration.
-     *
-     * @param componentName
-     * @return the span for chaining.
-     */
-    AbstractSpan setComponent(String componentName);
-
     AbstractSpan setLayer(SpanLayer layer);
 
     /**
@@ -279,9 +270,7 @@ As an interceptor for an instance method, the interceptor implements
 /**
  * A interceptor, which intercept method's invocation. The target methods will be defined in {@link
  * ClassEnhancePluginDefine}'s subclass, most likely in {@link ClassInstanceMethodsEnhancePluginDefine}
- *
- * @author wusheng
- */
+*/
 public interface InstanceMethodsAroundInterceptor {
     /**
      * called before target method invocation.

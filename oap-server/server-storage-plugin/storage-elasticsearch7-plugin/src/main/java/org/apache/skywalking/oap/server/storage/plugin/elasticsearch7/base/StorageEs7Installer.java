@@ -17,29 +17,21 @@
 
 package org.apache.skywalking.oap.server.storage.plugin.elasticsearch7.base;
 
+import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.skywalking.oap.server.core.storage.model.Model;
+import org.apache.skywalking.oap.server.library.client.Client;
 import org.apache.skywalking.oap.server.library.client.elasticsearch.ElasticSearchClient;
 import org.apache.skywalking.oap.server.library.module.ModuleManager;
 import org.apache.skywalking.oap.server.storage.plugin.elasticsearch.base.StorageEsInstaller;
 import org.apache.skywalking.oap.server.storage.plugin.elasticsearch7.StorageModuleElasticsearch7Config;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-
-/**
- * @author kezhenxu94, jian.tan
- */
+@Slf4j
 public class StorageEs7Installer extends StorageEsInstaller {
-
-    private static final Logger logger = LoggerFactory.getLogger(StorageEs7Installer.class);
-
-    private final StorageModuleElasticsearch7Config config;
-
-    public StorageEs7Installer(final ModuleManager moduleManager,
+    public StorageEs7Installer(final Client client,
+                               final ModuleManager moduleManager,
                                final StorageModuleElasticsearch7Config config) {
-        super(moduleManager, config);
-        this.config = config;
+        super(client, moduleManager, config);
     }
 
     @SuppressWarnings("unchecked")
@@ -48,18 +40,8 @@ public class StorageEs7Installer extends StorageEsInstaller {
         Map<String, Object> type = (Map<String, Object>) mapping.remove(ElasticSearchClient.TYPE);
         mapping.put("properties", type.get("properties"));
 
-        logger.debug("elasticsearch index template setting: {}", mapping.toString());
+        log.debug("elasticsearch index template setting: {}", mapping.toString());
 
         return mapping;
-    }
-
-    protected Map<String, Object> createSetting(boolean record) {
-        Map<String, Object> setting = super.createSetting(record);
-
-        if (config.getIndexMaxResultWindow() > 0) {
-            setting.put("index.max_result_window", config.getIndexMaxResultWindow());
-        }
-
-        return setting;
     }
 }

@@ -20,17 +20,5 @@ package org.apache.skywalking.oap.server.storage.plugin.elasticsearch7;
 
 import org.apache.skywalking.oap.server.storage.plugin.elasticsearch.StorageModuleElasticsearchConfig;
 
-/**
- * @author kezhenxu94
- */
 public class StorageModuleElasticsearch7Config extends StorageModuleElasticsearchConfig {
-    private int indexMaxResultWindow;
-
-    public int getIndexMaxResultWindow() {
-        return indexMaxResultWindow;
-    }
-
-    public void setIndexMaxResultWindow(final int indexMaxResultWindow) {
-        this.indexMaxResultWindow = indexMaxResultWindow;
-    }
 }

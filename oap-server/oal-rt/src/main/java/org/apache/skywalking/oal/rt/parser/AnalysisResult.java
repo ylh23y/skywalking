@@ -18,19 +18,26 @@
 
 package org.apache.skywalking.oal.rt.parser;
 
-import java.util.*;
-import lombok.*;
+import java.util.LinkedList;
+import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.skywalking.oap.server.core.storage.type.StorageDataComplexObject;
 
-@Getter(AccessLevel.PUBLIC)
-@Setter(AccessLevel.PUBLIC)
+@Getter
+@Setter
 public class AnalysisResult {
     private String varName;
 
     private String metricsName;
 
+    private String metricsClassPackage;
+
     private String tableName;
 
     private String packageName;
+
+    private String sourcePackage;
 
     private String sourceName;
 
@@ -50,7 +57,8 @@ public class AnalysisResult {
 
     private List<ConditionExpression> funcConditionExpressions;
 
-    private List<String> funcArgs;
+    private List<Argument> funcArgs;
+
     private int argGetIdx = 0;
 
     private List<DataColumn> persistentFields;
@@ -88,14 +96,14 @@ public class AnalysisResult {
         filterExpressionsParserResult.add(conditionExpression);
     }
 
-    public void addFuncArg(String value) {
+    public void addFuncArg(Argument argument) {
         if (funcArgs == null) {
             funcArgs = new LinkedList<>();
         }
-        funcArgs.add(value);
+        funcArgs.add(argument);
     }
 
-    public String getNextFuncArg() {
+    public Argument getNextFuncArg() {
         return funcArgs.get(argGetIdx++);
     }
 
@@ -117,30 +125,29 @@ public class AnalysisResult {
                     serializeFields.addLongField(sourceColumn.getFieldName());
                     break;
                 default:
-                    throw new IllegalStateException("Unexpected field type [" + type + "] of source sourceColumn [" + sourceColumn.getFieldName() + "]");
+                    throw new IllegalStateException(
+                        "Unexpected field type [" + type + "] of source sourceColumn [" + sourceColumn
+                            .getFieldName() + "]");
             }
         }
 
         for (DataColumn column : persistentFields) {
-            String type = column.getType().getSimpleName();
-            switch (type) {
-                case "int":
-                    serializeFields.addIntField(column.getFieldName());
-                    break;
-                case "double":
-                    serializeFields.addDoubleField(column.getFieldName());
-                    break;
-                case "String":
-                    serializeFields.addStringField(column.getFieldName());
-                    break;
-                case "long":
-                    serializeFields.addLongField(column.getFieldName());
-                    break;
-                case "IntKeyLongValueHashMap":
-                    serializeFields.addIntKeyLongValueHashMapField(column.getFieldName());
-                    break;
-                default:
-                    throw new IllegalStateException("Unexpected field type [" + type + "] of persistence column [" + column.getFieldName() + "]");
+            final Class<?> columnType = column.getType();
+
+            if (columnType.equals(int.class)) {
+                serializeFields.addIntField(column.getFieldName());
+            } else if (columnType.equals(double.class)) {
+                serializeFields.addDoubleField(column.getFieldName());
+            } else if (columnType.equals(String.class)) {
+                serializeFields.addStringField(column.getFieldName());
+            } else if (columnType.equals(long.class)) {
+                serializeFields.addLongField(column.getFieldName());
+            } else if (StorageDataComplexObject.class.isAssignableFrom(columnType)) {
+                serializeFields.addObjectField(column.getFieldName(), columnType.getName());
+            } else {
+                throw new IllegalStateException(
+                    "Unexpected field type [" + columnType.getSimpleName() + "] of persistence column [" + column
+                        .getFieldName() + "]");
             }
         }
     }

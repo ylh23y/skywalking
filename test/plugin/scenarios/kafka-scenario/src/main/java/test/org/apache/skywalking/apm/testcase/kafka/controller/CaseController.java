@@ -18,6 +18,10 @@
 
 package test.org.apache.skywalking.apm.testcase.kafka.controller;
 
+import java.util.Arrays;
+import java.util.Properties;
+import java.util.function.Consumer;
+import javax.annotation.PostConstruct;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -34,11 +38,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import javax.annotation.PostConstruct;
-import java.util.Arrays;
-import java.util.Properties;
-import java.util.function.Consumer;
-
 import static java.util.Objects.isNull;
 
 @Controller
@@ -54,12 +53,14 @@ public class CaseController {
     private String bootstrapServers;
 
     private String topicName;
+    private String topicName2;
 
     private static volatile boolean KAFKA_STATUS = false;
 
     @PostConstruct
     private void setUp() {
         topicName = "test";
+        topicName2 = "test2";
         new CheckKafkaProducerThread(bootstrapServers).start();
     }
 
@@ -75,6 +76,13 @@ public class CaseController {
                     logger.info("send success metadata={}", metadata);
                 }
             });
+
+            ProducerRecord<String, String> record2 = new ProducerRecord<String, String>(topicName2, "testKey", Integer.toString(1));
+            record2.headers().add("TEST", "TEST".getBytes());
+            Callback callback2 = (metadata, exception) -> {
+                logger.info("send success metadata={}", metadata);
+            };
+            producer.send(record2, callback2);
         }, bootstrapServers);
         Thread thread = new ConsumerThread();
         thread.start();
@@ -132,16 +140,15 @@ public class CaseController {
                         return;
                     }
                     wrapProducer(producer -> {
-                        ProducerRecord<String, String> record = new ProducerRecord<String, String>("check", "checkKey", Integer.toString(1));
+                        ProducerRecord<String, String> record = new ProducerRecord<String, String>("check", "checkKey", Integer
+                            .toString(1));
                         record.headers().add("CHECK", "CHECK".getBytes());
-                        producer.send(record, new Callback() {
-                            @Override
-                            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
-                                if (isNull(e)) {
-                                    KAFKA_STATUS = true;
-                                }
+                        Callback callback = (metadata, e) -> {
+                            if (isNull(e)) {
+                                KAFKA_STATUS = true;
                             }
-                        });
+                        };
+                        producer.send(record, callback);
                     }, bootstrapServers);
                 } catch (Exception e) {
                     logger.error("check " + bootstrapServers + " " + e.getMessage(), e);
@@ -179,7 +186,11 @@ public class CaseController {
 
                 if (!records.isEmpty()) {
                     for (ConsumerRecord<String, String> record : records) {
-                        logger.info("header: {}", new String(record.headers().headers("TEST").iterator().next().value()));
+                        logger.info("header: {}", new String(record.headers()
+                                                                   .headers("TEST")
+                                                                   .iterator()
+                                                                   .next()
+                                                                   .value()));
                         logger.info("offset = {}, key = {}, value = {}", record.offset(), record.key(), record.value());
                     }
                     break;

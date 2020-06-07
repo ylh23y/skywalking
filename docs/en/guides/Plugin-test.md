@@ -1,11 +1,11 @@
 # Plugin automatic test framework
 
-Plugin test frameworks is designed for verifying the plugin function and compatible status. As there are dozens of plugins and
-hundreds versions need to be verified, it is impossible to do manually.
+Plugin test framework is designed for verifying the plugins' function and compatible status. As there are dozens of plugins and
+hundreds of versions need to be verified, it is impossible to do manually.
 The test framework uses container based tech stack, requires a set of real services with agent installed, then the test mock
-OAP backend is running to check the segment and register data sent from agents.
+OAP backend is running to check the segments data sent from agents.
 
-Every plugin maintained in the main repo is required having its test cases, also matching the versions in the supported list doc. 
+Every plugin maintained in the main repo requires corresponding test cases, also matching the versions in the supported list doc.
 
 ## Environment Requirements
 
@@ -90,7 +90,7 @@ The following files are required in every test case.
 File Name | Descriptions
 ---|---
 `configuration.yml` | Declare the basic case inform, including, case name, entrance endpoints, mode, dependencies.
-`expectedData.yaml` | Describe the expected Segment(s), including two major parts, (1) Register metadata (2) Segments
+`expectedData.yaml` | Describe the expected segmentItems.
 `support-version.list` | List the target versions for this case
 `startup.sh` |`JVM-container` only, don't need this when use`Tomcat-container`
 
@@ -101,8 +101,8 @@ File Name | Descriptions
 | Field | description
 | --- | ---
 | type | Image type, options, `jvm` or `tomcat`. Required.
-| entryService | The entrance endpoint(URL) for test case access. Required.
-| healthCheck | The health check endpoint(URL) for test case access. Required.
+| entryService | The entrance endpoint(URL) for test case access. Required. (HTTP Method: GET)
+| healthCheck | The health check endpoint(URL) for test case access. Required. (HTTP Method: HEAD)
 | startScript | Path of start up script. Required in `type: jvm` only.
 | framework | Case name.
 | runningMode | Running mode whether with the optional plugin, options, `default`(default), `with_optional`, `with_bootstrap`
@@ -210,34 +210,11 @@ as the version number, it will be changed in the test for every version.
 | `null` | Null or empty String |
 | `eq` | Equal(default) |
 
-
-**Register verify description format**
-```yml
-registryItems:
-  applications:
-  - APPLICATION_CODE: APPLICATION_ID(int)
-  ...
-  instances:
-  - APPLICATION_CODE: INSTANCE_COUNT(int)
-  ...
-  operationNames:
-  - APPLICATION_CODE: [ SPAN_OPERATION(string), ... ]
-  ...
-```
-
-
-| Field | Description
-| --- | ---
-| applications | The registered service codes. Normally, not 0 should be enough.
-| instances | The number of service instances exists in this test case.
-| operationNames | All endpoint registered in this test case. Also means, the operation names of all entry and exit spans.
-
-
 **Segment verify description format**
 ```yml
-segments:
+segmentItems:
 -
-  applicationCode: APPLICATION_CODE(string)
+  serviceName: SERVICE_NAME(string)
   segmentSize: SEGMENT_SIZE(int)
   segments:
   - segmentId: SEGMENT_ID(string)
@@ -248,7 +225,7 @@ segments:
 
 | Field |  Description
 | --- | ---  
-| applicationCode | Service code.
+| serviceName | Service Name.
 | segmentSize | The number of segments is expected.
 | segmentId | trace ID.
 | spans | segment span list. Follow the next section to see how to describe every span.
@@ -259,15 +236,13 @@ segments:
 
 ```yml
     operationName: OPERATION_NAME(string)
-    operationId: SPAN_ID(int)
     parentSpanId: PARENT_SPAN_ID(int)
     spanId: SPAN_ID(int)
     startTime: START_TIME(int)
     endTime: END_TIME(int)
     isError: IS_ERROR(string: true, false)
     spanLayer: SPAN_LAYER(string: DB, RPC_FRAMEWORK, HTTP, MQ, CACHE)
-    spanType: SPAN_TYPE(string: Exit, Entry, Local )
-    componentName: COMPONENT_NAME(string)
+    spanType: SPAN_TYPE(string: Exit, Entry, Local)
     componentId: COMPONENT_ID(int)
     tags:
     - {key: TAG_KEY(string), value: TAG_VALUE(string)}
@@ -276,49 +251,47 @@ segments:
     - {key: LOG_KEY(string), value: LOG_VALUE(string)}
     ...
     peer: PEER(string)
-    peerId: PEER_ID(int)
     refs:
     - {
-       parentSpanId: PARENT_SPAN_ID(int),
+       traceId: TRACE_ID(string),
        parentTraceSegmentId: PARENT_TRACE_SEGMENT_ID(string),
-       entryServiceName: ENTRY_SERVICE_NAME(string),
+       parentSpanId: PARENT_SPAN_ID(int),
+       parentService: PARENT_SERVICE(string),
+       parentServiceInstance: PARENT_SERVICE_INSTANCE(string),
+       parentEndpoint: PARENT_ENDPOINT_NAME(string),
        networkAddress: NETWORK_ADDRESS(string),
-       parentServiceName: PARENT_SERVICE_NAME(string),
-       entryApplicationInstanceId: ENTRY_APPLICATION_INSTANCE_ID(int)
+       refType:  REF_TYPE(string: CrossProcess, CrossThread)
      }
    ...
 ```
 
 | Field | Description 
 |--- |--- 
-| operationName | Span Operation Name 
-| operationId | Should be 0 for now 
+| operationName | Span Operation Name.
 | parentSpanId | Parent span id. **Notice**: The parent span id of the first span should be -1. 
 | spanId | Span Id. **Notice**, start from 0. 
 | startTime | Span start time. It is impossible to get the accurate time, not 0 should be enough.
 | endTime | Span finish time. It is impossible to get the accurate time, not 0 should be enough.
 | isError | Span status, true or false. 
-| componentName | Component name, should be null in most cases, use component id instead.
 | componentId | Component id for your plugin. 
 | tags | Span tag list. **Notice**, Keep in the same order as the plugin coded.
 | logs | Span log list. **Notice**, Keep in the same order as the plugin coded.
-| SpanLayer | Options, DB, RPC_FRAMEWORK, HTTP, MQ, CACHE 
-| SpanType | Span type, options, Exit, Entry or Local 
+| SpanLayer | Options, DB, RPC_FRAMEWORK, HTTP, MQ, CACHE.
+| SpanType | Span type, options, Exit, Entry or Local.
 | peer | Remote network address, IP + port mostly. For exit span, this should be required. 
-| peerId | Not 0 for now.
 
-
-The verify description for SegmentRef,
+The verify description for SegmentRef
 
 | Field | Description 
 |---- |---- 
+| traceId | 
+| parentTraceSegmentId | Parent SegmentId, pointing to the segment id in the parent segment.
 | parentSpanId | Parent SpanID, pointing to the span id in the parent segment.
-| parentTraceSegmentId | Parent SegmentID. Format is `${APPLICATION_CODE[SEGMENT_INDEX]}`, pointing to the index of parent service segment list. 
-| entryServiceName | Entrance service code of the whole distributed call chain. Such HttpClient entryServiceName is `/httpclient-case/case/httpclient` 
-| networkAddress | The peer value of parent exit span. 
-| parentServiceName | Parent service code.
-| entryApplicationInstanceId | Not 0 should be enough.
-
+| parentService | The service of parent/downstream service name.
+| parentServiceInstance | The instance of parent/downstream service instance name.
+| parentEndpoint |  The endpoint of parent/downstream service.
+| networkAddress | The peer value of parent exit span.
+| refType | Ref type, options, CrossProcess or CrossThread.
 
 ### startup.sh
 
@@ -406,7 +379,7 @@ and don't include the segments of heartbeat service in the expected segment data
 
 ### The example Process of Writing Expected Data
 
-Expected data file, `expectedData.yaml`, includes `RegistryItems` and `SegmentIntems`.
+Expected data file, `expectedData.yaml`, include `SegmentItems`.
 
 We are using the HttpClient plugin to show how to write the expected data.
 
@@ -436,24 +409,6 @@ There are two key points of testing
       |                           |                                  |
       +                           +                                  +
 ```
-
-#### RegistryItems
-
-HttpClient test case is running in Tomcat container, only one instance exists, so
-1. instance number is 1
-1. applicationId is not 0
-1. Because we have two servlet mapping paths, so two operation names. No health check operation name here. 
-
-```yml
-registryItems:
-  applications:
-  - {httpclient-case: nq 0}
-  instances:
-  - {httpclient-case: 1}
-  operationNames:
-  - httpclient-case: [/httpclient-case/case/httpclient,/httpclient-case/case/context-propagate] 
-```
-
 #### segmentItems
 
 By following the flow of HttpClient case, there should be two segments created.
@@ -461,8 +416,8 @@ By following the flow of HttpClient case, there should be two segments created.
 1. Segment represents the ContextPropagateServlet access. Let's name it as `SegmentB`.
 
 ```yml
-segments:
-  - applicationCode: httpclient-case
+segmentItems:
+  - serviceName: httpclient-case
     segmentSize: ge 2 # Could have more than one health check segments, because, the dependency is not standby.
 ```
 
@@ -475,7 +430,6 @@ SegmentA span list should like following
     - segmentId: not null
       spans:
         - operationName: /httpclient-case/case/context-propagate
-          operationId: eq 0
           parentSpanId: 0
           spanId: 1
           startTime: nq 0
@@ -483,16 +437,13 @@ SegmentA span list should like following
           isError: false
           spanLayer: Http
           spanType: Exit
-          componentName: null
           componentId: eq 2
           tags:
             - {key: url, value: 'http://127.0.0.1:8080/httpclient-case/case/context-propagate'}
             - {key: http.method, value: GET}
           logs: []
-          peer: null
-          peerId: eq 0
+          peer: 127.0.0.1:8080
         - operationName: /httpclient-case/case/httpclient
-          operationId: eq 0
           parentSpanId: -1
           spanId: 0
           startTime: nq 0
@@ -500,14 +451,12 @@ SegmentA span list should like following
           spanLayer: Http
           isError: false
           spanType: Entry
-          componentName: null
           componentId: 1
           tags:
             - {key: url, value: 'http://localhost:{SERVER_OUTPUT_PORT}/httpclient-case/case/httpclient'}
             - {key: http.method, value: GET}
           logs: []
           peer: null
-          peerId: eq 0
 ```
 
 SegmentB should only have one Tomcat entry span, but includes the Ref pointing to SegmentA.
@@ -518,7 +467,6 @@ SegmentB span list should like following
   spans:
   -
    operationName: /httpclient-case/case/context-propagate
-   operationId: eq 0
    parentSpanId: -1
    spanId: 0
    tags:
@@ -530,12 +478,10 @@ SegmentB span list should like following
    spanLayer: Http
    isError: false
    spanType: Entry
-   componentName: null
    componentId: 1
    peer: null
-   peerId: eq 0
    refs:
-   - {parentSpanId: 1, parentTraceSegmentId: "${httpclient-case[0]}", entryServiceName: "/httpclient-case/case/httpclient", networkAddress: "127.0.0.1:8080",parentServiceName: "/httpclient-case/case/httpclient",entryApplicationInstanceId: nq 0 }
+    - {parentEndpoint: /httpclient-case/case/httpclient, networkAddress: 'localhost:8080', refType: CrossProcess, parentSpanId: 1, parentTraceSegmentId: not null, parentServiceInstance: not null, parentService: not null, traceId: not null}
 ```
 
 ## Local Test and Pull Request To The Upstream
@@ -548,7 +494,7 @@ You could run test by using following commands
 
 ```bash
 cd ${SKYWALKING_HOME}
-bash ./test/pugin/run.sh -f ${scenario_name}
+bash ./test/plugin/run.sh -f ${scenario_name}
 ```
 
 **Notice**，if codes in `./apm-sniffer` have been changed, no matter because your change or git update，
@@ -557,129 +503,23 @@ rather than recompiling it every time.
 
 Use `${SKYWALKING_HOME}/test/plugin/run.sh -h` to know more command options.
 
-If the local test passed, then you could add it to Jenkins file, which will drive the tests running on the official SkyWalking INFRA.
-We have 3 JenkinsFile to control the test jobs, `jenkinsfile-agent-test`, `jenkinsfile-agent-test-2` and `jenkinsfile-agent-test-3`(maybe will have 4 later)
-each file declares two parallel groups. Please check the prev agent related PRs, and add your case to the fastest group,
-in order to make the whole test finished as soon as possible.
+If the local test passed, then you could add it to `.github/workflows/plugins-test.<n>.yaml` file, which will drive the tests running on the Github Actions of official SkyWalking repository.
+Based on your plugin's name, please add the test case into file `.github/workflows/plugins-test.<n>.yaml`, by alphabetical orders.
 
-Every test case is a Jenkins stage. Please use the scenario name, version range and version number to combine the name,
-take the existing one as a reference. And update the total case number in `Test Cases Report` stage.
+Every test case is a Github Actions Job. Please use the `<scenario name> + <version range> + (<supported version count>)` as the Job `title`, and the scenario directory as the Job `name`,
+mostly you'll just need to decide which file (`plugins-test.<n>.yaml`) to add your test case, and simply put one line (as follows) in it, take the existed cases as examples.
 
-Example
-
+```yaml
+jobs:
+  PluginsTest:
+    name: Plugin
+    runs-on: ubuntu-18.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: true
+      matrix:
+        case:
+          # ...
+          - { name: '<your case name>', title: '<PluginName, i.e. Spring> (<Supported Version Count, i.e 12>)' } # <<== insert one line by alphabetical orders
+          # ...
 ```
-stage('Test Cases Report (15)') { # 15=12+3 The total number of test cases
-    steps {
-        echo "Test Cases Report"
-    }
-}
-
-stage('Run Agent Plugin Tests') {
-    when {
-        expression {
-            return sh(returnStatus: true, script: 'bash tools/ci/agent-build-condition.sh')
-        }
-    }
-    parallel {
-        stage('Group1') {
-            stages {
-                stage('spring-cloud-gateway 2.1.x (3)') { # For Spring clound gateway 2.1.x, having 3 versions to be tested.
-                    steps {
-                        sh 'bash test/plugin/run.sh gateway-scenario'
-                    }
-                }
-            }
-            ...
-        }
-        stage('Group2') {
-            stages {
-                stage('solrj 7.x (12)') { # For Solrj 7.x, having 12 versions to be tested.
-                    steps {
-                        sh 'bash test/plugin/run.sh solrj-7.x-scenario'
-                    }
-                }
-            }
-            ...
-        }
-    }
-}
-```
-
-## The elapsed time list of plugins
-
-### How to get the Elapsed time of your task?
- 
-Find the button 'detail' of your Workload in the PR page. Enter to the page and get the elapsed time of your task.
-
-### Workload 1
-#### Group 1 (2709.00s)
-scenario name | versions | elapsed time (sec)
----|---|---
-apm-toolkit-trace | 1 | 87.00
-jetty 9.x | 63 | 2043.00
-netty-socketio 1.x | 4 | 117.00
-rabbitmq-scenario | 12 | 462
-
-#### Group 2 (2291.98s)
-scenario name | versions | elapsed time (sec)
----|---|---
-feign 9.0.0-9.5.1 | 8 | 172.00
-customize | 1 | 85.64
-postgresql 9.4.1207+ | 62 | 1820.29
-canal 1.0.24-1.1.2 | 5 | 214.05
-
-
-### Workload 2
-#### Group 1 (3936.54s)
-scenario name | versions | elapsed time (sec)
----|---|---
-spring-tx 4.x+ | 10 | 555.00
-spring 4.3.x-5.2.x | 54 | 1769.32
-dubbo 2.5.x-2.6.x | 10 | 367.23
-dubbo 2.7.x | 4 | 214.99
-okhttp 3.0.x-3.14.x | 34 | 1030
-
-#### Group 2 (2550.66s)
-scenario name | versions | elapsed time (sec)
----|---|---
-redisson 3.x | 37 | 1457.77
-spring 3.1.x-4.0.x | 25 | 760.22
-spring-cloud-gateway 2.1.x | 3 | 190.52
-elasticsearch 5.x | 3 | 142.15
-
-
-### Workload 3
-#### Group 1 (3090.912s)
-scenario name | versions | elapsed time (sec)
----|---|---
-hystrix-scenario | 20 | 799.00
-postgresql 9.2.x-9.4.x | 36 | 1243.03
-sofarpc 5.4.0-5.6.2 | 23 | 817.77
-spring 3.0.x | 8 | 231.11
-
-#### Group 2 (2433.33s)
-scenario name | versions | elapsed time (sec)
----|---|---
-spring async 4.3.x-5.1.x | 35 | 967.70
-mongodb 3.4.0-3.11.1 | 17 | 1465.63
-grcp 1.6.0-1.25.0 | 25 | 627.00
-
-### Workload 4
-#### Group 1 (2463.00s)
-scenario name | versions | elapsed time (sec)
----|---|---
-elasticsearch-6.x-scenario | 7 | 273.00
-kafka 0.11.0.0-2.3.0 | 16 | 628.00
-ehcache 2.8.x-2.10.x | 19 | 442.00
-undertow 1.3.0-2.0.27 | 23 | 596.00
-jedis 2.4.0-2.9.0 ｜ 18 ｜ 524.00
-
-#### Group 2 (2398.155s)
-scenario name | versions | elapsed time (sec)
----|---|---
-elasticsearch-7.x-scenario | 11 | 250.00
-spring-webflux 2.x | 18 | 705.60
-spring 4.1.x-4.2.x | 20 | 574.75
-solrj 7.x | 12 | 367.05
-httpclient 4.3.x-4.5.x | 14 | 300.61
-httpasyncclient 4.0-4.1.3 | 7 | 200.11

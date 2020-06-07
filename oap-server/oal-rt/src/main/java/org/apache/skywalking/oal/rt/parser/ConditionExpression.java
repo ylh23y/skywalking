@@ -18,10 +18,11 @@
 
 package org.apache.skywalking.oal.rt.parser;
 
-import lombok.*;
+import lombok.Getter;
+import lombok.Setter;
 
-@Getter(AccessLevel.PUBLIC)
-@Setter(AccessLevel.PUBLIC)
+@Getter
+@Setter
 public class ConditionExpression {
     // original from script
     private String expressionType;
